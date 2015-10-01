@@ -29,7 +29,7 @@
 " 20-Jun-2013, Ingo Karkat
 " - ENH: Implement command completion for :[N]Mark that offers existing mark
 "   patterns (from group [N] / all groups), both as one regular expression and
-"	individual alternatives. The leading \< can be omitted.
+"   individual alternatives. The leading \< can be omitted.
 "
 " 29-May-2013, Ingo Karkat
 " - Factor out s:HasVariablePersistence() and include the note in :MarkLoad,
@@ -246,434 +246,435 @@
 
 "- functions ------------------------------------------------------------------
 
-silent! call SearchSpecial#DoesNotExist()	" Execute a function to force autoload.
+silent! call SearchSpecial#DoesNotExist()   " Execute a function to force autoload.
 if exists('*SearchSpecial#WrapMessage')
-	function! s:WrapMessage( searchType, searchPattern, isBackward )
-		redraw
-		call SearchSpecial#WrapMessage(a:searchType, a:searchPattern, a:isBackward)
-	endfunction
-	function! s:EchoSearchPattern( searchType, searchPattern, isBackward )
-		call SearchSpecial#EchoSearchPattern(a:searchType, a:searchPattern, a:isBackward)
-	endfunction
+    function! s:WrapMessage( searchType, searchPattern, isBackward )
+        redraw
+        call SearchSpecial#WrapMessage(a:searchType, a:searchPattern, a:isBackward)
+    endfunction
+    function! s:EchoSearchPattern( searchType, searchPattern, isBackward )
+        call SearchSpecial#EchoSearchPattern(a:searchType, a:searchPattern, a:isBackward)
+    endfunction
 else
-	function! s:Trim( message )
-		" Limit length to avoid "Hit ENTER" prompt.
-		return strpart(a:message, 0, (&columns / 2)) . (len(a:message) > (&columns / 2) ? "..." : "")
-	endfunction
-	function! s:WrapMessage( searchType, searchPattern, isBackward )
-		redraw
-		let v:warningmsg = printf('%s search hit %s, continuing at %s', a:searchType, (a:isBackward ? 'TOP' : 'BOTTOM'), (a:isBackward ? 'BOTTOM' : 'TOP'))
-		echohl WarningMsg
-		echo s:Trim(v:warningmsg)
-		echohl None
-	endfunction
-	function! s:EchoSearchPattern( searchType, searchPattern, isBackward )
-		let l:message = (a:isBackward ? '?' : '/') .  a:searchPattern
-		echohl SearchSpecialSearchType
-		echo a:searchType
-		echohl None
-		echon s:Trim(l:message)
-	endfunction
+    function! s:Trim( message )
+        " Limit length to avoid "Hit ENTER" prompt.
+        return strpart(a:message, 0, (&columns / 2)) . (len(a:message) > (&columns / 2) ? "..." : "")
+    endfunction
+    function! s:WrapMessage( searchType, searchPattern, isBackward )
+        redraw
+        let v:warningmsg = printf('%s search hit %s, continuing at %s', a:searchType, (a:isBackward ? 'TOP' : 'BOTTOM'), (a:isBackward ? 'BOTTOM' : 'TOP'))
+        echohl WarningMsg
+        echo s:Trim(v:warningmsg)
+        echohl None
+    endfunction
+    function! s:EchoSearchPattern( searchType, searchPattern, isBackward )
+        let l:message = (a:isBackward ? '?' : '/') .  a:searchPattern
+        echohl SearchSpecialSearchType
+        echo a:searchType
+        echohl None
+        echon s:Trim(l:message)
+    endfunction
 endif
 
 function! s:EscapeText( text )
-	return substitute( escape(a:text, '\' . '^$.*[~'), "\n", '\\n', 'ge' )
+    return substitute( escape(a:text, '\' . '^$.*[~'), "\n", '\\n', 'ge' )
 endfunction
 function! s:IsIgnoreCase( expr )
-	return ((exists('g:mwIgnoreCase') ? g:mwIgnoreCase : &ignorecase) && a:expr !~# '\\\@<!\\C')
+    return ((exists('g:mwIgnoreCase') ? g:mwIgnoreCase : &ignorecase) && a:expr !~# '\\\@<!\\C')
 endfunction
 " Mark the current word, like the built-in star command.
 " If the cursor is on an existing mark, remove it.
 function! mark#MarkCurrentWord( groupNum )
-	let l:regexp = (a:groupNum == 0 ? mark#CurrentMark()[0] : '')
-	if empty(l:regexp)
-		let l:cword = expand('<cword>')
-		if ! empty(l:cword)
-			let l:regexp = s:EscapeText(l:cword)
-			" The star command only creates a \<whole word\> search pattern if the
-			" <cword> actually only consists of keyword characters.
-			if l:cword =~# '^\k\+$'
-				let l:regexp = '\<' . l:regexp . '\>'
-			endif
-		endif
-	endif
-	return (empty(l:regexp) ? 0 : mark#DoMark(a:groupNum, l:regexp)[0])
+    let l:regexp = (a:groupNum == 0 ? mark#CurrentMark()[0] : '')
+    if empty(l:regexp)
+        let l:cword = expand('<cword>')
+        if ! empty(l:cword)
+            let l:regexp = s:EscapeText(l:cword)
+            " The star command only creates a \<whole word\> search pattern if the
+            " <cword> actually only consists of keyword characters.
+            if l:cword =~# '^\k\+$'
+                let l:regexp = '\<' . l:regexp . '\>'
+            endif
+        endif
+    endif
+    return (empty(l:regexp) ? 0 : mark#DoMark(a:groupNum, l:regexp)[0])
 endfunction
 
 function! mark#GetVisualSelection()
-	let save_clipboard = &clipboard
-	set clipboard= " Avoid clobbering the selection and clipboard registers.
-	let save_reg = getreg('"')
-	let save_regmode = getregtype('"')
-	silent normal! gvy
-	let res = getreg('"')
-	call setreg('"', save_reg, save_regmode)
-	let &clipboard = save_clipboard
-	return res
+    let save_clipboard = &clipboard
+    set clipboard= " Avoid clobbering the selection and clipboard registers.
+    let save_reg = getreg('"')
+    let save_regmode = getregtype('"')
+    silent normal! gvy
+    let res = getreg('"')
+    call setreg('"', save_reg, save_regmode)
+    let &clipboard = save_clipboard
+    return res
 endfunction
 function! mark#GetVisualSelectionAsLiteralPattern()
-	return s:EscapeText(mark#GetVisualSelection())
+    return s:EscapeText(mark#GetVisualSelection())
 endfunction
 function! mark#GetVisualSelectionAsRegexp()
-	return substitute(mark#GetVisualSelection(), '\n', '', 'g')
+    return substitute(mark#GetVisualSelection(), '\n', '', 'g')
 endfunction
 function! mark#GetVisualSelectionAsLiteralWhitespaceIndifferentPattern()
-	return substitute(escape(mark#GetVisualSelection(), '\' . '^$.*[~'), '\_s\+', '\\_s\\+', 'g')
+    return substitute(escape(mark#GetVisualSelection(), '\' . '^$.*[~'), '\_s\+', '\\_s\\+', 'g')
 endfunction
 
 " Manually input a regular expression.
 function! mark#MarkRegex( groupNum, regexpPreset )
-	call inputsave()
-		echohl Question
-			let l:regexp = input('Input pattern to mark: ', a:regexpPreset)
-		echohl None
-	call inputrestore()
-	let v:errmsg = ''
-	if empty(l:regexp)
-		return 0
-	endif
+    call inputsave()
+        echohl Question
+            let l:regexp = input('Input pattern to mark: ', a:regexpPreset)
+        echohl None
+    call inputrestore()
+    let v:errmsg = ''
+    if empty(l:regexp)
+        return 0
+    endif
 
-	redraw " This is necessary when the user is queried for the mark group.
-	return mark#DoMarkAndSetCurrent(a:groupNum, l:regexp)[0]
+    redraw " This is necessary when the user is queried for the mark group.
+    return mark#DoMarkAndSetCurrent(a:groupNum, l:regexp)[0]
 endfunction
 
 function! s:Cycle( ... )
-	let l:currentCycle = s:cycle
-	let l:newCycle = (a:0 ? a:1 : s:cycle) + 1
-	let s:cycle = (l:newCycle < s:markNum ? l:newCycle : 0)
-	return l:currentCycle
+    let l:currentCycle = s:cycle
+    let l:newCycle = (a:0 ? a:1 : s:cycle) + 1
+    let s:cycle = (l:newCycle < s:markNum ? l:newCycle : 0)
+    return l:currentCycle
 endfunction
 function! s:FreeGroupIndex()
-	let i = 0
-	while i < s:markNum
-		if empty(s:pattern[i])
-			return i
-		endif
-		let i += 1
-	endwhile
-	return -1
+    let i = 0
+    while i < s:markNum
+        if empty(s:pattern[i])
+            return i
+        endif
+        let i += 1
+    endwhile
+    return -1
 endfunction
 
 " Set match / clear matches in the current window.
 function! s:MarkMatch( indices, expr )
-	if ! exists('w:mwMatch')
-		let w:mwMatch = repeat([0], s:markNum)
-	elseif len(w:mwMatch) != s:markNum
-		" The number of marks has changed.
-		if len(w:mwMatch) > s:markNum
-			" Truncate the matches.
-			for l:match in filter(w:mwMatch[s:markNum : ], 'v:val > 0')
-				silent! call matchdelete(l:match)
-			endfor
-			let w:mwMatch = w:mwMatch[0 : (s:markNum - 1)]
-		else
-			" Expand the matches.
-			let w:mwMatch += repeat([0], (s:markNum - len(w:mwMatch)))
-		endif
-	endif
+    if ! exists('w:mwMatch')
+        let w:mwMatch = repeat([0], s:markNum)
+    elseif len(w:mwMatch) != s:markNum
+        " The number of marks has changed.
+        if len(w:mwMatch) > s:markNum
+            " Truncate the matches.
+            for l:match in filter(w:mwMatch[s:markNum : ], 'v:val > 0')
+                silent! call matchdelete(l:match)
+            endfor
+            let w:mwMatch = w:mwMatch[0 : (s:markNum - 1)]
+        else
+            " Expand the matches.
+            let w:mwMatch += repeat([0], (s:markNum - len(w:mwMatch)))
+        endif
+    endif
 
-	for l:index in a:indices
-		if w:mwMatch[l:index] > 0
-			silent! call matchdelete(w:mwMatch[l:index])
-			let w:mwMatch[l:index] = 0
-		endif
-	endfor
+    for l:index in a:indices
+        if w:mwMatch[l:index] > 0
+            silent! call matchdelete(w:mwMatch[l:index])
+            let w:mwMatch[l:index] = 0
+        endif
+    endfor
 
-	if ! empty(a:expr)
-		let l:index = a:indices[0]	" Can only set one index for now.
+    if ! empty(a:expr)
+        let l:index = a:indices[0]  " Can only set one index for now.
 
-		" Info: matchadd() does not consider the 'magic' (it's always on),
-		" 'ignorecase' and 'smartcase' settings.
-		" Make the match according to the 'ignorecase' setting, like the star command.
-		" (But honor an explicit case-sensitive regexp via the /\C/ atom.)
-		let l:expr = (s:IsIgnoreCase(a:expr) ? '\c' : '') . a:expr
+        " Info: matchadd() does not consider the 'magic' (it's always on),
+        " 'ignorecase' and 'smartcase' settings.
+        " Make the match according to the 'ignorecase' setting, like the star command.
+        " (But honor an explicit case-sensitive regexp via the /\C/ atom.)
+        let l:expr = (s:IsIgnoreCase(a:expr) ? '\c' : '') . a:expr
 
-		" To avoid an arbitrary ordering of highlightings, we assign a different
-		" priority based on the highlight group, and ensure that the highest
-		" priority is -10, so that we do not override the 'hlsearch' of 0, and still
-		" allow other custom highlightings to sneak in between.
-		let l:priority = -10 - s:markNum + 1 + l:index
+        " To avoid an arbitrary ordering of highlightings, we assign a different
+        " priority based on the highlight group, and ensure that the highest
+        " priority is -10, so that we do not override the 'hlsearch' of 0, and still
+        " allow other custom highlightings to sneak in between.
+        let l:priority = -10 - s:markNum + 1 + l:index
 
-		let w:mwMatch[l:index] = matchadd('MarkWord' . (l:index + 1), l:expr, l:priority)
-	endif
+        let w:mwMatch[l:index] = matchadd('MarkWord' . (l:index + 1), l:expr, l:priority)
+    endif
 endfunction
 " Initialize mark colors in a (new) window.
 function! mark#UpdateMark()
-	let i = 0
-	while i < s:markNum
-		if ! s:enabled || empty(s:pattern[i])
-			call s:MarkMatch([i], '')
-		else
-			call s:MarkMatch([i], s:pattern[i])
-		endif
-		let i += 1
-	endwhile
+    let i = 0
+    while i < s:markNum
+        if ! s:enabled || empty(s:pattern[i])
+            call s:MarkMatch([i], '')
+        else
+            call s:MarkMatch([i], s:pattern[i])
+        endif
+        let i += 1
+    endwhile
 endfunction
 " Set / clear matches in all windows.
 function! s:MarkScope( indices, expr )
-	let l:currentWinNr = winnr()
+    let l:currentWinNr = winnr()
 
-	" By entering a window, its height is potentially increased from 0 to 1 (the
-	" minimum for the current window). To avoid any modification, save the window
-	" sizes and restore them after visiting all windows.
-	let l:originalWindowLayout = winrestcmd()
+    " By entering a window, its height is potentially increased from 0 to 1 (the
+    " minimum for the current window). To avoid any modification, save the window
+    " sizes and restore them after visiting all windows.
+    let l:originalWindowLayout = winrestcmd()
 
-	noautocmd windo call s:MarkMatch(a:indices, a:expr)
-	execute l:currentWinNr . 'wincmd w'
-	silent! execute l:originalWindowLayout
+    noautocmd windo call s:MarkMatch(a:indices, a:expr)
+    execute l:currentWinNr . 'wincmd w'
+    silent! execute l:originalWindowLayout
 endfunction
 " Update matches in all windows.
 function! mark#UpdateScope()
-	let l:currentWinNr = winnr()
+    let l:currentWinNr = winnr()
 
-	" By entering a window, its height is potentially increased from 0 to 1 (the
-	" minimum for the current window). To avoid any modification, save the window
-	" sizes and restore them after visiting all windows.
-	let l:originalWindowLayout = winrestcmd()
+    " By entering a window, its height is potentially increased from 0 to 1 (the
+    " minimum for the current window). To avoid any modification, save the window
+    " sizes and restore them after visiting all windows.
+    let l:originalWindowLayout = winrestcmd()
 
-	noautocmd windo call mark#UpdateMark()
-	execute l:currentWinNr . 'wincmd w'
-	silent! execute l:originalWindowLayout
+    noautocmd windo call mark#UpdateMark()
+    execute l:currentWinNr . 'wincmd w'
+    silent! execute l:originalWindowLayout
 endfunction
 
 function! s:MarkEnable( enable, ...)
-	if s:enabled != a:enable
-		" En-/disable marks and perform a full refresh in all windows, unless
-		" explicitly suppressed by passing in 0.
-		let s:enabled = a:enable
-		if g:mwAutoSaveMarks
-			let g:MARK_ENABLED = s:enabled
-		endif
+    if s:enabled != a:enable
+        " En-/disable marks and perform a full refresh in all windows, unless
+        " explicitly suppressed by passing in 0.
+        let s:enabled = a:enable
+        if g:mwAutoSaveMarks
+            let g:MARK_ENABLED = s:enabled
+        endif
 
-		if ! a:0 || ! a:1
-			call mark#UpdateScope()
-		endif
-	endif
+        if ! a:0 || ! a:1
+            call mark#UpdateScope()
+        endif
+    endif
 endfunction
 function! s:EnableAndMarkScope( indices, expr )
-	if s:enabled
-		" Marks are already enabled, we just need to push the changes to all
-		" windows.
-		call s:MarkScope(a:indices, a:expr)
-	else
-		call s:MarkEnable(1)
-	endif
+    if s:enabled
+        " Marks are already enabled, we just need to push the changes to all
+        " windows.
+        call s:MarkScope(a:indices, a:expr)
+    else
+        call s:MarkEnable(1)
+    endif
 endfunction
 
 " Toggle visibility of marks, like :nohlsearch does for the regular search
 " highlighting.
 function! mark#Toggle()
-	if s:enabled
-		call s:MarkEnable(0)
-		echo 'Disabled marks'
-	else
-		call s:MarkEnable(1)
+    if s:enabled
+        call s:MarkEnable(0)
+        echo 'Disabled marks'
+    else
+        call s:MarkEnable(1)
 
-		let l:markCnt = len(filter(copy(s:pattern), '! empty(v:val)'))
-		echo 'Enabled' (l:markCnt > 0 ? l:markCnt . ' ' : '') . 'marks'
-	endif
+        let l:markCnt = len(filter(copy(s:pattern), '! empty(v:val)'))
+        echo 'Enabled' (l:markCnt > 0 ? l:markCnt . ' ' : '') . 'marks'
+    endif
 endfunction
 
 
 " Mark or unmark a regular expression.
 function! s:SetPattern( index, pattern )
-	let s:pattern[a:index] = a:pattern
+    let s:pattern[a:index] = a:pattern
 
-	if g:mwAutoSaveMarks
-		call s:SavePattern()
-	endif
+    if g:mwAutoSaveMarks
+        call s:SavePattern()
+    endif
 endfunction
 function! mark#ClearAll()
-	let i = 0
-	let indices = []
-	while i < s:markNum
-		if ! empty(s:pattern[i])
-			call s:SetPattern(i, '')
-			call add(indices, i)
-		endif
-		let i += 1
-	endwhile
-	let s:lastSearch = -1
+    let i = 0
+    let indices = []
+    while i < s:markNum
+        if ! empty(s:pattern[i])
+            call s:SetPattern(i, '')
+            call add(indices, i)
+        endif
+        let i += 1
+    endwhile
+    let s:lastSearch = -1
 
-	" Re-enable marks; not strictly necessary, since all marks have just been
-	" cleared, and marks will be re-enabled, anyway, when the first mark is
-	" added. It's just more consistent for mark persistence. But save the full
-	" refresh, as we do the update ourselves.
-	call s:MarkEnable(0, 0)
+    " Re-enable marks; not strictly necessary, since all marks have just been
+    " cleared, and marks will be re-enabled, anyway, when the first mark is
+    " added. It's just more consistent for mark persistence. But save the full
+    " refresh, as we do the update ourselves.
+    call s:MarkEnable(0, 0)
 
-	call s:MarkScope(l:indices, '')
+    call s:MarkScope(l:indices, '')
 
-	if len(indices) > 0
-		echo 'Cleared all' len(indices) 'marks'
-	else
-		echo 'All marks cleared'
-	endif
+    if len(indices) > 0
+        echo 'Cleared all' len(indices) 'marks'
+    else
+        echo 'All marks cleared'
+    endif
 endfunction
 function! s:SetMark( index, regexp, ... )
-	if a:0
-		if s:lastSearch == a:index
-			let s:lastSearch = a:1
-		endif
-	endif
-	call s:SetPattern(a:index, a:regexp)
-	call s:EnableAndMarkScope([a:index], a:regexp)
+    if a:0
+        if s:lastSearch == a:index
+            let s:lastSearch = a:1
+        endif
+    endif
+    call s:SetPattern(a:index, a:regexp)
+    call s:EnableAndMarkScope([a:index], a:regexp)
 endfunction
 function! s:ClearMark( index )
-	" A last search there is reset.
-	call s:SetMark(a:index, '', -1)
+    " A last search there is reset.
+    call s:SetMark(a:index, '', -1)
 endfunction
 function! s:EchoMark( groupNum, regexp )
-	call s:EchoSearchPattern('mark-' . a:groupNum, a:regexp, 0)
+    call s:EchoSearchPattern('mark-' . a:groupNum, a:regexp, 0)
 endfunction
 function! s:EchoMarkCleared( groupNum )
-	echohl SearchSpecialSearchType
-	echo 'mark-' . a:groupNum
-	echohl None
-	echon ' cleared'
+    echohl SearchSpecialSearchType
+    echo 'mark-' . a:groupNum
+    echohl None
+    echon ' cleared'
 endfunction
 function! s:EchoMarksDisabled()
-	echo 'All marks disabled'
+    echo 'All marks disabled'
 endfunction
 
 function! s:SplitIntoAlternatives( pattern )
-	return split(a:pattern, '\%(\%(^\|[^\\]\)\%(\\\\\)*\\\)\@<!\\|')
+    return split(a:pattern, '\%(\%(^\|[^\\]\)\%(\\\\\)*\\\)\@<!\\|')
 endfunction
 
 " Return [success, markGroupNum]. success is true when the mark has been set or
 " cleared. markGroupNum is the mark group number where the mark was set. It is 0
 " if the group was cleared.
 function! mark#DoMark( groupNum, ...)
-	if s:markNum <= 0
-		" Uh, somehow no mark highlightings were defined. Try to detect them again.
-		call mark#Init()
-		if s:markNum <= 0
-			" Still no mark highlightings; complain.
-			call s:ErrorMsg('No mark highlightings defined')
-			return [0, 0]
-		endif
-	endif
+    if s:markNum <= 0
+        " Uh, somehow no mark highlightings were defined. Try to detect them again.
+        call mark#Init()
+        if s:markNum <= 0
+            " Still no mark highlightings; complain.
+            call s:ErrorMsg('No mark highlightings defined')
+            return [0, 0]
+        endif
+    endif
 
-	let l:groupNum = a:groupNum
-	if l:groupNum > s:markNum
-		" This highlight group does not exist.
-		let l:groupNum = mark#QueryMarkGroupNum()
-		if l:groupNum < 1 || l:groupNum > s:markNum
-			return [0, 0]
-		endif
-	endif
+    let l:groupNum = a:groupNum
+    if l:groupNum > s:markNum
+        " This highlight group does not exist.
+        let l:groupNum = mark#QueryMarkGroupNum()
+        if l:groupNum < 1 || l:groupNum > s:markNum
+            return [0, 0]
+        endif
+    endif
 
-	let regexp = (a:0 ? a:1 : '')
-	if empty(regexp)
-		if l:groupNum == 0
-			" Disable all marks.
-			call s:MarkEnable(0)
-			call s:EchoMarksDisabled()
-		else
-			" Clear the mark represented by the passed highlight group number.
-			call s:ClearMark(l:groupNum - 1)
-			call s:EchoMarkCleared(l:groupNum)
-		endif
+    let regexp = (a:0 ? a:1 : '')
+    if empty(regexp)
+        if l:groupNum == 0
+            " Disable all marks.
+            call s:MarkEnable(0)
+            call s:EchoMarksDisabled()
+        else
+            " Clear the mark represented by the passed highlight group number.
+            call s:ClearMark(l:groupNum - 1)
+            call s:EchoMarkCleared(l:groupNum)
+        endif
 
-		return [1, 0]
-	endif
+        return [1, 0]
+    endif
 
-	if l:groupNum == 0
-		" Clear the mark if it has been marked.
-		let i = 0
-		while i < s:markNum
-			if regexp ==# s:pattern[i]
-				call s:ClearMark(i)
-				call s:EchoMarkCleared(i + 1)
-				return [1, 0]
-			endif
-			let i += 1
-		endwhile
-	else
-		" Add / subtract the pattern as an alternative to the mark represented
-		" by the passed highlight group number.
-		let existingPattern = s:pattern[l:groupNum - 1]
-		if ! empty(existingPattern)
-			" Split only on \|, but not on \\|.
-			let alternatives = s:SplitIntoAlternatives(existingPattern)
-			if index(alternatives, regexp) == -1
-				let regexp = existingPattern . '\|' . regexp
-			else
-				let regexp = join(filter(alternatives, 'v:val !=# regexp'), '\|')
-				if empty(regexp)
-					call s:ClearMark(l:groupNum - 1)
-					call s:EchoMarkCleared(l:groupNum)
-					return [1, 0]
-				endif
-			endif
-		endif
-	endif
+    if l:groupNum == 0
+        " Clear the mark if it has been marked.
+        let i = 0
+        while i < s:markNum
+            if regexp ==# s:pattern[i]
+                call s:ClearMark(i)
+                call s:EchoMarkCleared(i + 1)
+                return [1, 0]
+            endif
+            let i += 1
+        endwhile
+    else
+        " Add / subtract the pattern as an alternative to the mark represented
+        " by the passed highlight group number.
+        let existingPattern = s:pattern[l:groupNum - 1]
+        if ! empty(existingPattern)
+            " Split only on \|, but not on \\|.
+            let alternatives = s:SplitIntoAlternatives(existingPattern)
+            if index(alternatives, regexp) == -1
+                let regexp = existingPattern . '\|' . regexp
+            else
+                let regexp = join(filter(alternatives, 'v:val !=# regexp'), '\|')
+                if empty(regexp)
+                    call s:ClearMark(l:groupNum - 1)
+                    call s:EchoMarkCleared(l:groupNum)
+                    return [1, 0]
+                endif
+            endif
+        endif
+    endif
 
-	" add to history
-	if stridx(g:mwHistAdd, '/') >= 0
-		call histadd('/', regexp)
-	endif
-	if stridx(g:mwHistAdd, '@') >= 0
-		call histadd('@', regexp)
-	endif
+    " add to history
+    if stridx(g:mwHistAdd, '/') >= 0
+        call histadd('/', regexp)
+    endif
+    if stridx(g:mwHistAdd, '@') >= 0
+        call histadd('@', regexp)
+    endif
 
-	if l:groupNum == 0
-		let i = s:FreeGroupIndex()
-		if i != -1
-			" Choose an unused highlight group. The last search is kept untouched.
-			call s:Cycle(i)
-			call s:SetMark(i, regexp)
-		else
-			" Choose a highlight group by cycle. A last search there is reset.
-			let i = s:Cycle()
-			call s:SetMark(i, regexp, -1)
-		endif
-	else
-		let i = l:groupNum - 1
-		" Use and extend the passed highlight group. A last search is updated
-		" and thereby kept active.
-		call s:SetMark(i, regexp, i)
-	endif
+    if l:groupNum == 0
+        let i = s:FreeGroupIndex()
+        if i != -1
+            " Choose an unused highlight group. The last search is kept untouched.
+            call s:Cycle(i)
+            call s:SetMark(i, regexp)
+        else
+            " Choose a highlight group by cycle. A last search there is reset.
+            let i = s:Cycle()
+            call s:SetMark(i, regexp, -1)
+        endif
+    else
+        let i = l:groupNum - 1
+        " Use and extend the passed highlight group. A last search is updated
+        " and thereby kept active.
+        call s:SetMark(i, regexp, i)
+    endif
 
-	call s:EchoMark(i + 1, regexp)
-	return [1, i + 1]
+    call s:EchoMark(i + 1, regexp)
+    return [1, i + 1]
 endfunction
+
 " To avoid accepting an invalid regular expression (e.g. "\(blah") and then
 " causing ugly errors on every mark update, check the patterns passed by the
 " user for validity. (We assume that the expressions generated by the plugin
 " itself from literal text are all valid.)
 function! s:IsRegexpValid( expr )
-	try
-		call match('', a:expr)
-		return 1
-	catch /^Vim\%((\a\+)\)\=:/
-		" v:exception contains what is normally in v:errmsg, but with extra
-		" exception source info prepended, which we cut away.
-		let v:errmsg = substitute(v:exception, '^\CVim\%((\a\+)\)\=:', '', '')
-		return 0
-	endtry
+    try
+        call match('', a:expr)
+        return 1
+    catch /^Vim\%((\a\+)\)\=:/
+        " v:exception contains what is normally in v:errmsg, but with extra
+        " exception source info prepended, which we cut away.
+        let v:errmsg = substitute(v:exception, '^\CVim\%((\a\+)\)\=:', '', '')
+        return 0
+    endtry
 endfunction
 function! mark#DoMarkAndSetCurrent( groupNum, ... )
-	if a:0 && ! s:IsRegexpValid(a:1)
-		return 0
-	endif
+    if a:0 && ! s:IsRegexpValid(a:1)
+        return 0
+    endif
 
-	let l:result = call('mark#DoMark', [a:groupNum] + a:000)
-	let l:markGroupNum = l:result[1]
-	if l:markGroupNum > 0
-		let s:lastSearch = l:markGroupNum - 1
-	endif
+    let l:result = call('mark#DoMark', [a:groupNum] + a:000)
+    let l:markGroupNum = l:result[1]
+    if l:markGroupNum > 0
+        let s:lastSearch = l:markGroupNum - 1
+    endif
 
-	return l:result
+    return l:result
 endfunction
 function! mark#SetMark( groupNum, ... )
-	" For the :Mark command, don't query when the passed mark group doesn't
-	" exist (interactivity in Ex commands is unexpected). Instead, return an
-	" error.
-	if s:markNum > 0 && a:groupNum > s:markNum
-		let v:errmsg = printf('Only %d mark highlight groups', mark#GetGroupNum())
-		return 0
-	endif
-	return call('mark#DoMarkAndSetCurrent', [a:groupNum] + a:000)
+    " For the :Mark command, don't query when the passed mark group doesn't
+    " exist (interactivity in Ex commands is unexpected). Instead, return an
+    " error.
+    if s:markNum > 0 && a:groupNum > s:markNum
+        let v:errmsg = printf('Only %d mark highlight groups', mark#GetGroupNum())
+        return 0
+    endif
+    return call('mark#DoMarkAndSetCurrent', [a:groupNum] + a:000)
 endfunction
 
 " Return [mark text, mark start position, mark index] of the mark under the
@@ -681,505 +682,505 @@ endfunction
 " The mark can include the trailing newline character that concludes the line,
 " but marks that span multiple lines are not supported.
 function! mark#CurrentMark()
-	let line = getline('.') . "\n"
+    let line = getline('.') . "\n"
 
-	" Highlighting groups with higher numbers take precedence over lower numbers,
-	" and therefore its marks appear "above" other marks. To retrieve the visible
-	" mark in case of overlapping marks, we need to check from highest to lowest
-	" highlight group.
-	let i = s:markNum - 1
-	while i >= 0
-		if ! empty(s:pattern[i])
-			let matchPattern = (s:IsIgnoreCase(s:pattern[i]) ? '\c' : '\C') . s:pattern[i]
-			" Note: col() is 1-based, all other indexes zero-based!
-			let start = 0
-			while start >= 0 && start < strlen(line) && start < col('.')
-				let b = match(line, matchPattern, start)
-				let e = matchend(line, matchPattern, start)
-				if b < col('.') && col('.') <= e
-					return [s:pattern[i], [line('.'), (b + 1)], i]
-				endif
-				if b == e
-					break
-				endif
-				let start = e
-			endwhile
-		endif
-		let i -= 1
-	endwhile
-	return ['', [], -1]
+    " Highlighting groups with higher numbers take precedence over lower numbers,
+    " and therefore its marks appear "above" other marks. To retrieve the visible
+    " mark in case of overlapping marks, we need to check from highest to lowest
+    " highlight group.
+    let i = s:markNum - 1
+    while i >= 0
+        if ! empty(s:pattern[i])
+            let matchPattern = (s:IsIgnoreCase(s:pattern[i]) ? '\c' : '\C') . s:pattern[i]
+            " Note: col() is 1-based, all other indexes zero-based!
+            let start = 0
+            while start >= 0 && start < strlen(line) && start < col('.')
+                let b = match(line, matchPattern, start)
+                let e = matchend(line, matchPattern, start)
+                if b < col('.') && col('.') <= e
+                    return [s:pattern[i], [line('.'), (b + 1)], i]
+                endif
+                if b == e
+                    break
+                endif
+                let start = e
+            endwhile
+        endif
+        let i -= 1
+    endwhile
+    return ['', [], -1]
 endfunction
 
 " Search current mark.
 function! mark#SearchCurrentMark( isBackward )
-	let l:result = 0
+    let l:result = 0
 
-	let [l:markText, l:markPosition, l:markIndex] = mark#CurrentMark()
-	if empty(l:markText)
-		if s:lastSearch == -1
-			let l:result = mark#SearchAnyMark(a:isBackward)
-			let s:lastSearch = mark#CurrentMark()[2]
-		else
-			let l:result = s:Search(s:pattern[s:lastSearch], v:count1, a:isBackward, [], 'mark-' . (s:lastSearch + 1))
-		endif
-	else
-		let l:result = s:Search(l:markText, v:count1, a:isBackward, l:markPosition, 'mark-' . (l:markIndex + 1) . (l:markIndex ==# s:lastSearch ? '' : '!'))
-		let s:lastSearch = l:markIndex
-	endif
+    let [l:markText, l:markPosition, l:markIndex] = mark#CurrentMark()
+    if empty(l:markText)
+        if s:lastSearch == -1
+            let l:result = mark#SearchAnyMark(a:isBackward)
+            let s:lastSearch = mark#CurrentMark()[2]
+        else
+            let l:result = s:Search(s:pattern[s:lastSearch], v:count1, a:isBackward, [], 'mark-' . (s:lastSearch + 1))
+        endif
+    else
+        let l:result = s:Search(l:markText, v:count1, a:isBackward, l:markPosition, 'mark-' . (l:markIndex + 1) . (l:markIndex ==# s:lastSearch ? '' : '!'))
+        let s:lastSearch = l:markIndex
+    endif
 
-	return l:result
+    return l:result
 endfunction
 
 function! mark#SearchGroupMark( groupNum, count, isBackward, isSetLastSearch )
-	if a:groupNum == 0
-		" No mark group number specified; use last search, and fall back to
-		" current mark if possible.
-		if s:lastSearch == -1
-			let [l:markText, l:markPosition, l:markIndex] = mark#CurrentMark()
-			if empty(l:markText)
-				return 0
-			endif
-		else
-			let l:markIndex = s:lastSearch
-			let l:markText = s:pattern[l:markIndex]
-			let l:markPosition = []
-		endif
-	else
-		let l:groupNum = a:groupNum
-		if l:groupNum > s:markNum
-			" This highlight group does not exist.
-			let l:groupNum = mark#QueryMarkGroupNum()
-			if l:groupNum < 1 || l:groupNum > s:markNum
-				return 0
-			endif
-		endif
+    if a:groupNum == 0
+        " No mark group number specified; use last search, and fall back to
+        " current mark if possible.
+        if s:lastSearch == -1
+            let [l:markText, l:markPosition, l:markIndex] = mark#CurrentMark()
+            if empty(l:markText)
+                return 0
+            endif
+        else
+            let l:markIndex = s:lastSearch
+            let l:markText = s:pattern[l:markIndex]
+            let l:markPosition = []
+        endif
+    else
+        let l:groupNum = a:groupNum
+        if l:groupNum > s:markNum
+            " This highlight group does not exist.
+            let l:groupNum = mark#QueryMarkGroupNum()
+            if l:groupNum < 1 || l:groupNum > s:markNum
+                return 0
+            endif
+        endif
 
-		let l:markIndex = l:groupNum - 1
-		let l:markText = s:pattern[l:markIndex]
-		let l:markPosition = []
-	endif
+        let l:markIndex = l:groupNum - 1
+        let l:markText = s:pattern[l:markIndex]
+        let l:markPosition = []
+    endif
 
-	let l:result =  s:Search(l:markText, a:count, a:isBackward, l:markPosition, 'mark-' . (l:markIndex + 1) . (l:markIndex ==# s:lastSearch ? '' : '!'))
-	if a:isSetLastSearch
-		let s:lastSearch = l:markIndex
-	endif
-	return l:result
+    let l:result =  s:Search(l:markText, a:count, a:isBackward, l:markPosition, 'mark-' . (l:markIndex + 1) . (l:markIndex ==# s:lastSearch ? '' : '!'))
+    if a:isSetLastSearch
+        let s:lastSearch = l:markIndex
+    endif
+    return l:result
 endfunction
 
 function! s:ErrorMsg( text, ... )
-	let v:errmsg = a:text
-	if a:0 && ! a:1 | return | endif
+    let v:errmsg = a:text
+    if a:0 && ! a:1 | return | endif
 
-	echohl ErrorMsg
-	echomsg v:errmsg
-	echohl None
+    echohl ErrorMsg
+    echomsg v:errmsg
+    echohl None
 endfunction
 function! s:WarningMsg( text )
-	let v:warningmsg = a:text
-	echohl WarningMsg
-	echomsg v:warningmsg
-	echohl None
+    let v:warningmsg = a:text
+    echohl WarningMsg
+    echomsg v:warningmsg
+    echohl None
 endfunction
 function! s:NoMarkErrorMessage()
-	call s:ErrorMsg('No marks defined')
+    call s:ErrorMsg('No marks defined')
 endfunction
 function! s:ErrorMessage( searchType, searchPattern, isBackward )
-	if &wrapscan
-		let l:errmsg = a:searchType . ' not found: ' . a:searchPattern
-	else
-		let l:errmsg = printf('%s search hit %s without match for: %s', a:searchType, (a:isBackward ? 'TOP' : 'BOTTOM'), a:searchPattern)
-	endif
-	call s:ErrorMsg(l:errmsg)
+    if &wrapscan
+        let l:errmsg = a:searchType . ' not found: ' . a:searchPattern
+    else
+        let l:errmsg = printf('%s search hit %s without match for: %s', a:searchType, (a:isBackward ? 'TOP' : 'BOTTOM'), a:searchPattern)
+    endif
+    call s:ErrorMsg(l:errmsg)
 endfunction
 
 " Wrapper around search() with additonal search and error messages and "wrapscan" warning.
 function! s:Search( pattern, count, isBackward, currentMarkPosition, searchType )
-	if empty(a:pattern)
-		call s:NoMarkErrorMessage()
-		return 0
-	endif
+    if empty(a:pattern)
+        call s:NoMarkErrorMessage()
+        return 0
+    endif
 
-	let l:save_view = winsaveview()
+    let l:save_view = winsaveview()
 
-	" searchpos() obeys the 'smartcase' setting; however, this setting doesn't
-	" make sense for the mark search, because all patterns for the marks are
-	" concatenated as branches in one large regexp, and because patterns that
-	" result from the *-command-alike mappings should not obey 'smartcase' (like
-	" the * command itself), anyway. If the :Mark command wants to support
-	" 'smartcase', it'd have to emulate that into the regular expression.
-	" Instead of temporarily unsetting 'smartcase', we force the correct
-	" case-matching behavior through \c / \C.
-	let l:searchPattern = (s:IsIgnoreCase(a:pattern) ? '\c' : '\C') . a:pattern
+    " searchpos() obeys the 'smartcase' setting; however, this setting doesn't
+    " make sense for the mark search, because all patterns for the marks are
+    " concatenated as branches in one large regexp, and because patterns that
+    " result from the *-command-alike mappings should not obey 'smartcase' (like
+    " the * command itself), anyway. If the :Mark command wants to support
+    " 'smartcase', it'd have to emulate that into the regular expression.
+    " Instead of temporarily unsetting 'smartcase', we force the correct
+    " case-matching behavior through \c / \C.
+    let l:searchPattern = (s:IsIgnoreCase(a:pattern) ? '\c' : '\C') . a:pattern
 
-	let l:count = a:count
-	let l:isWrapped = 0
-	let l:isMatch = 0
-	let l:line = 0
-	while l:count > 0
-		let [l:prevLine, l:prevCol] = [line('.'), col('.')]
+    let l:count = a:count
+    let l:isWrapped = 0
+    let l:isMatch = 0
+    let l:line = 0
+    while l:count > 0
+        let [l:prevLine, l:prevCol] = [line('.'), col('.')]
 
-		" Search for next match, 'wrapscan' applies.
-		let [l:line, l:col] = searchpos( l:searchPattern, (a:isBackward ? 'b' : '') )
+        " Search for next match, 'wrapscan' applies.
+        let [l:line, l:col] = searchpos( l:searchPattern, (a:isBackward ? 'b' : '') )
 
 "****D echomsg '****' a:isBackward string([l:line, l:col]) string(a:currentMarkPosition) l:count
-		if a:isBackward && l:line > 0 && [l:line, l:col] == a:currentMarkPosition && l:count == a:count
-			" On a search in backward direction, the first match is the start of the
-			" current mark (if the cursor was positioned on the current mark text, and
-			" not at the start of the mark text).
-			" In contrast to the normal search, this is not considered the first
-			" match. The mark text is one entity; if the cursor is positioned anywhere
-			" inside the mark text, the mark text is considered the current mark. The
-			" built-in '*' and '#' commands behave in the same way; the entire <cword>
-			" text is considered the current match, and jumps move outside that text.
-			" In normal search, the cursor can be positioned anywhere (via offsets)
-			" around the search, and only that single cursor position is considered
-			" the current match.
-			" Thus, the search is retried without a decrease of l:count, but only if
-			" this was the first match; repeat visits during wrapping around count as
-			" a regular match. The search also must not be retried when this is the
-			" first match, but we've been here before (i.e. l:isMatch is set): This
-			" means that there is only the current mark in the buffer, and we must
-			" break out of the loop and indicate that search wrapped around and no
-			" other mark was found.
-			if l:isMatch
-				let l:isWrapped = 1
-				break
-			endif
+        if a:isBackward && l:line > 0 && [l:line, l:col] == a:currentMarkPosition && l:count == a:count
+            " On a search in backward direction, the first match is the start of the
+            " current mark (if the cursor was positioned on the current mark text, and
+            " not at the start of the mark text).
+            " In contrast to the normal search, this is not considered the first
+            " match. The mark text is one entity; if the cursor is positioned anywhere
+            " inside the mark text, the mark text is considered the current mark. The
+            " built-in '*' and '#' commands behave in the same way; the entire <cword>
+            " text is considered the current match, and jumps move outside that text.
+            " In normal search, the cursor can be positioned anywhere (via offsets)
+            " around the search, and only that single cursor position is considered
+            " the current match.
+            " Thus, the search is retried without a decrease of l:count, but only if
+            " this was the first match; repeat visits during wrapping around count as
+            " a regular match. The search also must not be retried when this is the
+            " first match, but we've been here before (i.e. l:isMatch is set): This
+            " means that there is only the current mark in the buffer, and we must
+            " break out of the loop and indicate that search wrapped around and no
+            " other mark was found.
+            if l:isMatch
+                let l:isWrapped = 1
+                break
+            endif
 
-			" The l:isMatch flag is set so if the final mark cannot be reached, the
-			" original cursor position is restored. This flag also allows us to detect
-			" whether we've been here before, which is checked above.
-			let l:isMatch = 1
-		elseif l:line > 0
-			let l:isMatch = 1
-			let l:count -= 1
+            " The l:isMatch flag is set so if the final mark cannot be reached, the
+            " original cursor position is restored. This flag also allows us to detect
+            " whether we've been here before, which is checked above.
+            let l:isMatch = 1
+        elseif l:line > 0
+            let l:isMatch = 1
+            let l:count -= 1
 
-			" Note: No need to check 'wrapscan'; the wrapping can only occur if
-			" 'wrapscan' is actually on.
-			if ! a:isBackward && (l:prevLine > l:line || l:prevLine == l:line && l:prevCol >= l:col)
-				let l:isWrapped = 1
-			elseif a:isBackward && (l:prevLine < l:line || l:prevLine == l:line && l:prevCol <= l:col)
-				let l:isWrapped = 1
-			endif
-		else
-			break
-		endif
-	endwhile
+            " Note: No need to check 'wrapscan'; the wrapping can only occur if
+            " 'wrapscan' is actually on.
+            if ! a:isBackward && (l:prevLine > l:line || l:prevLine == l:line && l:prevCol >= l:col)
+                let l:isWrapped = 1
+            elseif a:isBackward && (l:prevLine < l:line || l:prevLine == l:line && l:prevCol <= l:col)
+                let l:isWrapped = 1
+            endif
+        else
+            break
+        endif
+    endwhile
 
-	" We're not stuck when the search wrapped around and landed on the current
-	" mark; that's why we exclude a possible wrap-around via a:count == 1.
-	let l:isStuckAtCurrentMark = ([l:line, l:col] == a:currentMarkPosition && a:count == 1)
+    " We're not stuck when the search wrapped around and landed on the current
+    " mark; that's why we exclude a possible wrap-around via a:count == 1.
+    let l:isStuckAtCurrentMark = ([l:line, l:col] == a:currentMarkPosition && a:count == 1)
 "****D echomsg '****' l:line l:isStuckAtCurrentMark l:isWrapped l:isMatch string([l:line, l:col]) string(a:currentMarkPosition)
-	if l:line > 0 && ! l:isStuckAtCurrentMark
-		let l:matchPosition = getpos('.')
+    if l:line > 0 && ! l:isStuckAtCurrentMark
+        let l:matchPosition = getpos('.')
 
-		" Open fold at the search result, like the built-in commands.
-		normal! zv
+        " Open fold at the search result, like the built-in commands.
+        normal! zv
 
-		" Add the original cursor position to the jump list, like the
-		" [/?*#nN] commands.
-		" Implementation: Memorize the match position, restore the view to the state
-		" before the search, then jump straight back to the match position. This
-		" also allows us to set a jump only if a match was found. (:call
-		" setpos("''", ...) doesn't work in Vim 7.2)
-		call winrestview(l:save_view)
-		normal! m'
-		call setpos('.', l:matchPosition)
+        " Add the original cursor position to the jump list, like the
+        " [/?*#nN] commands.
+        " Implementation: Memorize the match position, restore the view to the state
+        " before the search, then jump straight back to the match position. This
+        " also allows us to set a jump only if a match was found. (:call
+        " setpos("''", ...) doesn't work in Vim 7.2)
+        call winrestview(l:save_view)
+        normal! m'
+        call setpos('.', l:matchPosition)
 
-		" Enable marks (in case they were disabled) after arriving at the mark (to
-		" avoid unnecessary screen updates) but before the error message (to avoid
-		" it getting lost due to the screen updates).
-		call s:MarkEnable(1)
+        " Enable marks (in case they were disabled) after arriving at the mark (to
+        " avoid unnecessary screen updates) but before the error message (to avoid
+        " it getting lost due to the screen updates).
+        call s:MarkEnable(1)
 
-		if l:isWrapped
-			call s:WrapMessage(a:searchType, a:pattern, a:isBackward)
-		else
-			call s:EchoSearchPattern(a:searchType, a:pattern, a:isBackward)
-		endif
-		return 1
-	else
-		if l:isMatch
-			" The view has been changed by moving through matches until the end /
-			" start of file, when 'nowrapscan' forced a stop of searching before the
-			" l:count'th match was found.
-			" Restore the view to the state before the search.
-			call winrestview(l:save_view)
-		endif
+        if l:isWrapped
+            call s:WrapMessage(a:searchType, a:pattern, a:isBackward)
+        else
+            call s:EchoSearchPattern(a:searchType, a:pattern, a:isBackward)
+        endif
+        return 1
+    else
+        if l:isMatch
+            " The view has been changed by moving through matches until the end /
+            " start of file, when 'nowrapscan' forced a stop of searching before the
+            " l:count'th match was found.
+            " Restore the view to the state before the search.
+            call winrestview(l:save_view)
+        endif
 
-		" Enable marks (in case they were disabled) after arriving at the mark (to
-		" avoid unnecessary screen updates) but before the error message (to avoid
-		" it getting lost due to the screen updates).
-		call s:MarkEnable(1)
+        " Enable marks (in case they were disabled) after arriving at the mark (to
+        " avoid unnecessary screen updates) but before the error message (to avoid
+        " it getting lost due to the screen updates).
+        call s:MarkEnable(1)
 
-		if l:line > 0 && l:isStuckAtCurrentMark && l:isWrapped
-			call s:WrapMessage(a:searchType, a:pattern, a:isBackward)
-			return 1
-		else
-			call s:ErrorMessage(a:searchType, a:pattern, a:isBackward)
-			return 0
-		endif
-	endif
+        if l:line > 0 && l:isStuckAtCurrentMark && l:isWrapped
+            call s:WrapMessage(a:searchType, a:pattern, a:isBackward)
+            return 1
+        else
+            call s:ErrorMessage(a:searchType, a:pattern, a:isBackward)
+            return 0
+        endif
+    endif
 endfunction
 
 " Combine all marks into one regexp.
 function! s:AnyMark()
-	return join(filter(copy(s:pattern), '! empty(v:val)'), '\|')
+    return join(filter(copy(s:pattern), '! empty(v:val)'), '\|')
 endfunction
 
 " Search any mark.
 function! mark#SearchAnyMark( isBackward )
-	let l:markPosition = mark#CurrentMark()[1]
-	let l:markText = s:AnyMark()
-	let s:lastSearch = -1
-	return s:Search(l:markText, v:count1, a:isBackward, l:markPosition, 'mark-*')
+    let l:markPosition = mark#CurrentMark()[1]
+    let l:markText = s:AnyMark()
+    let s:lastSearch = -1
+    return s:Search(l:markText, v:count1, a:isBackward, l:markPosition, 'mark-*')
 endfunction
 
 " Search last searched mark.
 function! mark#SearchNext( isBackward, ... )
-	let l:markText = mark#CurrentMark()[0]
-	if empty(l:markText)
-		return 0    " Fall back to the built-in * / # command (done by the mapping).
-	endif
+    let l:markText = mark#CurrentMark()[0]
+    if empty(l:markText)
+        return 0    " Fall back to the built-in * / # command (done by the mapping).
+    endif
 
-	" Use the provided search type or choose depending on last use of
-	" <Plug>MarkSearchCurrentNext / <Plug>MarkSearchAnyNext.
-	call call(a:0 ? a:1 : (s:lastSearch == -1 ? 'mark#SearchAnyMark' : 'mark#SearchCurrentMark'), [a:isBackward])
-	return 1
+    " Use the provided search type or choose depending on last use of
+    " <Plug>MarkSearchCurrentNext / <Plug>MarkSearchAnyNext.
+    call call(a:0 ? a:1 : (s:lastSearch == -1 ? 'mark#SearchAnyMark' : 'mark#SearchCurrentMark'), [a:isBackward])
+    return 1
 endfunction
 
 " Load mark patterns from list.
 function! mark#Load( pattern, enabled )
-	if s:markNum > 0 && len(a:pattern) > 0
-		" Initialize mark patterns with the passed list. Ensure that, regardless of
-		" the list length, s:pattern contains exactly s:markNum elements.
-		let s:pattern = a:pattern[0:(s:markNum - 1)]
-		let s:pattern += repeat([''], (s:markNum - len(s:pattern)))
+    if s:markNum > 0 && len(a:pattern) > 0
+        " Initialize mark patterns with the passed list. Ensure that, regardless of
+        " the list length, s:pattern contains exactly s:markNum elements.
+        let s:pattern = a:pattern[0:(s:markNum - 1)]
+        let s:pattern += repeat([''], (s:markNum - len(s:pattern)))
 
-		let s:enabled = a:enabled
+        let s:enabled = a:enabled
 
-		call mark#UpdateScope()
+        call mark#UpdateScope()
 
-		" The list of patterns may be sparse, return only the actual patterns.
-		return len(filter(copy(a:pattern), '! empty(v:val)'))
-	endif
-	return 0
+        " The list of patterns may be sparse, return only the actual patterns.
+        return len(filter(copy(a:pattern), '! empty(v:val)'))
+    endif
+    return 0
 endfunction
 
 " Access the list of mark patterns.
 function! mark#ToPatternList()
-	" Trim unused patterns from the end of the list, the amount of available marks
-	" may differ on the next invocation (e.g. due to a different number of
-	" highlight groups in Vim and GVIM). We want to keep empty patterns in the
-	" front and middle to maintain the mapping to highlight groups, though.
-	let l:highestNonEmptyIndex = s:markNum - 1
-	while l:highestNonEmptyIndex >= 0 && empty(s:pattern[l:highestNonEmptyIndex])
-		let l:highestNonEmptyIndex -= 1
-	endwhile
+    " Trim unused patterns from the end of the list, the amount of available marks
+    " may differ on the next invocation (e.g. due to a different number of
+    " highlight groups in Vim and GVIM). We want to keep empty patterns in the
+    " front and middle to maintain the mapping to highlight groups, though.
+    let l:highestNonEmptyIndex = s:markNum - 1
+    while l:highestNonEmptyIndex >= 0 && empty(s:pattern[l:highestNonEmptyIndex])
+        let l:highestNonEmptyIndex -= 1
+    endwhile
 
-	return (l:highestNonEmptyIndex < 0 ? [] : s:pattern[0 : l:highestNonEmptyIndex])
+    return (l:highestNonEmptyIndex < 0 ? [] : s:pattern[0 : l:highestNonEmptyIndex])
 endfunction
 
 " Common functions for :MarkLoad and :MarkSave
 function! mark#MarksVariablesComplete( ArgLead, CmdLine, CursorPos )
-	return sort(map(filter(keys(g:), 'v:val !~# "^MARK_\\%(MARKS\\|ENABLED\\)$" && v:val =~# "\\V\\^MARK_' . (empty(a:ArgLead) ? '\\S' : escape(a:ArgLead, '\')) . '"'), 'v:val[5:]'))
+    return sort(map(filter(keys(g:), 'v:val !~# "^MARK_\\%(MARKS\\|ENABLED\\)$" && v:val =~# "\\V\\^MARK_' . (empty(a:ArgLead) ? '\\S' : escape(a:ArgLead, '\')) . '"'), 'v:val[5:]'))
 endfunction
 function! s:HasVariablePersistence()
-	return (index(split(&viminfo, ','), '!') != -1)
+    return (index(split(&viminfo, ','), '!') != -1)
 endfunction
 
 " :MarkLoad command.
 function! mark#LoadCommand( isShowMessages, ... )
-	if a:0
-		let l:marksVariable = printf('g:MARK_%s', a:1)
-		if exists(l:marksVariable)
-			let l:marks = eval(l:marksVariable)
-			let l:isEnabled = 1
-		else
-			call s:ErrorMsg('No marks stored under ' . l:marksVariable . (s:HasVariablePersistence() || a:1 !~# '^\u\+$' ? '' : ", and persistence not configured via ! flag in 'viminfo'"), a:isShowMessages)
-			return
-		endif
-	else
-		if exists('g:MARK_MARKS')
-			let l:marks = g:MARK_MARKS
-			let l:isEnabled = (exists('g:MARK_ENABLED') ? g:MARK_ENABLED : 1)
-		else
-			call s:ErrorMsg('No persistent marks found' . (s:HasVariablePersistence() ? '' : ", and persistence not configured via ! flag in 'viminfo'"), a:isShowMessages)
-			return
-		endif
-	endif
+    if a:0
+        let l:marksVariable = printf('g:MARK_%s', a:1)
+        if exists(l:marksVariable)
+            let l:marks = eval(l:marksVariable)
+            let l:isEnabled = 1
+        else
+            call s:ErrorMsg('No marks stored under ' . l:marksVariable . (s:HasVariablePersistence() || a:1 !~# '^\u\+$' ? '' : ", and persistence not configured via ! flag in 'viminfo'"), a:isShowMessages)
+            return
+        endif
+    else
+        if exists('g:MARK_MARKS')
+            let l:marks = g:MARK_MARKS
+            let l:isEnabled = (exists('g:MARK_ENABLED') ? g:MARK_ENABLED : 1)
+        else
+            call s:ErrorMsg('No persistent marks found' . (s:HasVariablePersistence() ? '' : ", and persistence not configured via ! flag in 'viminfo'"), a:isShowMessages)
+            return
+        endif
+    endif
 
-	try
-		" Persistent global variables cannot be of type List, so we actually store
-		" the string representation, and eval() it back to a List.
-		execute printf('let l:loadedMarkNum = mark#Load(%s, %d)', l:marks, l:isEnabled)
-		if a:isShowMessages
-			if l:loadedMarkNum == 0
-				echomsg 'No persistent marks defined' . (exists('l:marksVariable') ? ' in ' . l:marksVariable : '')
-			else
-				echomsg printf('Loaded %d mark%s', l:loadedMarkNum, (l:loadedMarkNum == 1 ? '' : 's')) . (s:enabled ? '' : '; marks currently disabled')
-			endif
-		endif
-	catch /^Vim\%((\a\+)\)\=:/
-		if exists('l:marksVariable')
-			call s:ErrorMsg(printf('Corrupted persistent mark info in %s', l:marksVariable), a:isShowMessages)
-			execute 'unlet!' l:marksVariable
-		else
-			call s:ErrorMsg('Corrupted persistent mark info in g:MARK_MARKS and g:MARK_ENABLED', a:isShowMessages)
-			unlet! g:MARK_MARKS
-			unlet! g:MARK_ENABLED
-		endif
-	endtry
+    try
+        " Persistent global variables cannot be of type List, so we actually store
+        " the string representation, and eval() it back to a List.
+        execute printf('let l:loadedMarkNum = mark#Load(%s, %d)', l:marks, l:isEnabled)
+        if a:isShowMessages
+            if l:loadedMarkNum == 0
+                echomsg 'No persistent marks defined' . (exists('l:marksVariable') ? ' in ' . l:marksVariable : '')
+            else
+                echomsg printf('Loaded %d mark%s', l:loadedMarkNum, (l:loadedMarkNum == 1 ? '' : 's')) . (s:enabled ? '' : '; marks currently disabled')
+            endif
+        endif
+    catch /^Vim\%((\a\+)\)\=:/
+        if exists('l:marksVariable')
+            call s:ErrorMsg(printf('Corrupted persistent mark info in %s', l:marksVariable), a:isShowMessages)
+            execute 'unlet!' l:marksVariable
+        else
+            call s:ErrorMsg('Corrupted persistent mark info in g:MARK_MARKS and g:MARK_ENABLED', a:isShowMessages)
+            unlet! g:MARK_MARKS
+            unlet! g:MARK_ENABLED
+        endif
+    endtry
 endfunction
 
 " :MarkSave command.
 function! s:SavePattern( ... )
-	let l:savedMarks = mark#ToPatternList()
+    let l:savedMarks = mark#ToPatternList()
 
-	if a:0
-		try
-			if empty(l:savedMarks)
-				unlet! g:MARK_{a:1}
-			else
-				let g:MARK_{a:1} = string(l:savedMarks)
-			endif
-		catch /^Vim\%((\a\+)\)\=:/
-			" v:exception contains what is normally in v:errmsg, but with extra
-			" exception source info prepended, which we cut away.
-			call s:ErrorMsg(substitute(v:exception, '^\CVim\%((\a\+)\)\=:', '', ''))
-			return -1
-		endtry
-	else
-		let g:MARK_MARKS = string(l:savedMarks)
-		let g:MARK_ENABLED = s:enabled
-	endif
-	return ! empty(l:savedMarks)
+    if a:0
+        try
+            if empty(l:savedMarks)
+                unlet! g:MARK_{a:1}
+            else
+                let g:MARK_{a:1} = string(l:savedMarks)
+            endif
+        catch /^Vim\%((\a\+)\)\=:/
+            " v:exception contains what is normally in v:errmsg, but with extra
+            " exception source info prepended, which we cut away.
+            call s:ErrorMsg(substitute(v:exception, '^\CVim\%((\a\+)\)\=:', '', ''))
+            return -1
+        endtry
+    else
+        let g:MARK_MARKS = string(l:savedMarks)
+        let g:MARK_ENABLED = s:enabled
+    endif
+    return ! empty(l:savedMarks)
 endfunction
 function! mark#SaveCommand( ... )
-	if ! s:HasVariablePersistence()
-		if ! a:0
-			call s:ErrorMsg("Cannot persist marks, need ! flag in 'viminfo': :set viminfo+=!")
-		elseif a:1 =~# '^\u\+$'
-			call s:WarningMsg("Cannot persist marks, need ! flag in 'viminfo': :set viminfo+=!")
-		endif
-	endif
+    if ! s:HasVariablePersistence()
+        if ! a:0
+            call s:ErrorMsg("Cannot persist marks, need ! flag in 'viminfo': :set viminfo+=!")
+        elseif a:1 =~# '^\u\+$'
+            call s:WarningMsg("Cannot persist marks, need ! flag in 'viminfo': :set viminfo+=!")
+        endif
+    endif
 
-	if ! call('s:SavePattern', a:000)
-		call s:WarningMsg('No marks defined')
-	endif
+    if ! call('s:SavePattern', a:000)
+        call s:WarningMsg('No marks defined')
+    endif
 endfunction
 
 
 " Query mark group number.
 function! s:GetNextGroupIndex()
-	let l:nextGroupIndex = s:FreeGroupIndex()
-	if l:nextGroupIndex == -1
-		let l:nextGroupIndex = s:cycle
-	endif
-	return l:nextGroupIndex
+    let l:nextGroupIndex = s:FreeGroupIndex()
+    if l:nextGroupIndex == -1
+        let l:nextGroupIndex = s:cycle
+    endif
+    return l:nextGroupIndex
 endfunction
 function! s:GetMarker( index, nextGroupIndex )
-	let l:marker = ''
-	if s:lastSearch == a:index
-		let l:marker .= '/'
-	endif
-	if a:index == a:nextGroupIndex
-		let l:marker .= '>'
-	endif
-	return l:marker
+    let l:marker = ''
+    if s:lastSearch == a:index
+        let l:marker .= '/'
+    endif
+    if a:index == a:nextGroupIndex
+        let l:marker .= '>'
+    endif
+    return l:marker
 endfunction
 function! s:GetAlternativeCount( pattern )
-	return len(s:SplitIntoAlternatives(a:pattern))
+    return len(s:SplitIntoAlternatives(a:pattern))
 endfunction
 function! s:PrintMarkGroup( nextGroupIndex )
-	for i in range(s:markNum)
-		echon ' '
-		execute 'echohl MarkWord' . (i + 1)
-		let c = s:GetAlternativeCount(s:pattern[i])
-		echon printf('%1s%s%2d ', s:GetMarker(i, a:nextGroupIndex), (c ? (c > 1 ? c : '') . '*' : ''), (i + 1))
-		echohl None
-	endfor
+    for i in range(s:markNum)
+        echon ' '
+        execute 'echohl MarkWord' . (i + 1)
+        let c = s:GetAlternativeCount(s:pattern[i])
+        echon printf('%1s%s%2d ', s:GetMarker(i, a:nextGroupIndex), (c ? (c > 1 ? c : '') . '*' : ''), (i + 1))
+        echohl None
+    endfor
 endfunction
 function! mark#QueryMarkGroupNum()
-	echohl Question
-	echo 'Mark?'
-	echohl None
-	let l:nextGroupIndex = s:GetNextGroupIndex()
-	call s:PrintMarkGroup(l:nextGroupIndex)
+    echohl Question
+    echo 'Mark?'
+    echohl None
+    let l:nextGroupIndex = s:GetNextGroupIndex()
+    call s:PrintMarkGroup(l:nextGroupIndex)
 
-	let l:nr = 0
-	while 1
-		let l:char = nr2char(getchar())
+    let l:nr = 0
+    while 1
+        let l:char = nr2char(getchar())
 
-		if l:char ==# "\<CR>"
-			return (l:nr == 0 ? l:nextGroupIndex + 1 : l:nr)
-		elseif l:char !~# '\d'
-			return -1
-		endif
-		echon l:char
+        if l:char ==# "\<CR>"
+            return (l:nr == 0 ? l:nextGroupIndex + 1 : l:nr)
+        elseif l:char !~# '\d'
+            return -1
+        endif
+        echon l:char
 
-		let l:nr = 10 * l:nr + l:char
-		if s:markNum < 10 * l:nr
-			return l:nr
-		endif
-	endwhile
+        let l:nr = 10 * l:nr + l:char
+        if s:markNum < 10 * l:nr
+            return l:nr
+        endif
+    endwhile
 endfunction
 
 " :Marks command.
 function! mark#List()
-	echohl Title
-	echo 'mark  cnt  Pattern'
-	echohl None
-	echon '  (> next mark group   / current search mark)'
-	let l:nextGroupIndex = s:GetNextGroupIndex()
-	for i in range(s:markNum)
-		execute 'echohl MarkWord' . (i + 1)
-		let c = s:GetAlternativeCount(s:pattern[i])
-		echo printf('%1s%3d%4s %s', s:GetMarker(i, l:nextGroupIndex), (i + 1), (c > 1 ? '('.c.')' : ''), s:pattern[i])
-		echohl None
-	endfor
+    echohl Title
+    echo 'mark  cnt  Pattern'
+    echohl None
+    echon '  (> next mark group   / current search mark)'
+    let l:nextGroupIndex = s:GetNextGroupIndex()
+    for i in range(s:markNum)
+        execute 'echohl MarkWord' . (i + 1)
+        let c = s:GetAlternativeCount(s:pattern[i])
+        echo printf('%1s%3d%4s %s', s:GetMarker(i, l:nextGroupIndex), (i + 1), (c > 1 ? '('.c.')' : ''), s:pattern[i])
+        echohl None
+    endfor
 
-	if ! s:enabled
-		echo 'Marks are currently disabled.'
-	endif
+    if ! s:enabled
+        echo 'Marks are currently disabled.'
+    endif
 endfunction
 
 function! mark#GetGroupNum()
-	return s:markNum
+    return s:markNum
 endfunction
 
 
 " :Mark command completion.
 function! mark#Complete( ArgLead, CmdLine, CursorPos )
-	let l:cmdlineBeforeCursor = strpart(a:CmdLine, 0, a:CursorPos)
-	let l:matches = matchlist(l:cmdlineBeforeCursor, '\C\(\d*\)\s*Mark!\?\s\+\V' . escape(a:ArgLead, '\'))
-	if empty(l:matches)
-		return []
-	endif
+    let l:cmdlineBeforeCursor = strpart(a:CmdLine, 0, a:CursorPos)
+    let l:matches = matchlist(l:cmdlineBeforeCursor, '\C\(\d*\)\s*Mark!\?\s\+\V' . escape(a:ArgLead, '\'))
+    if empty(l:matches)
+        return []
+    endif
 
-	" Complete from the command's mark group, or all groups when none is
-	" specified.
-	let l:groupNum = 0 + l:matches[1]
-	let l:patterns =(l:groupNum == 0 || empty(get(s:pattern, l:groupNum - 1, '')) ? filter(copy(s:pattern), '! empty(v:val)') : [s:pattern[l:groupNum - 1]])
+    " Complete from the command's mark group, or all groups when none is
+    " specified.
+    let l:groupNum = 0 + l:matches[1]
+    let l:patterns =(l:groupNum == 0 || empty(get(s:pattern, l:groupNum - 1, '')) ? filter(copy(s:pattern), '! empty(v:val)') : [s:pattern[l:groupNum - 1]])
 
-	" Complete both the entire pattern as well as its individual alternatives.
-	let l:expandedPatterns = []
-	for l:pattern in l:patterns
-		if index(l:expandedPatterns, l:pattern) == -1
-			call add(l:expandedPatterns, l:pattern)
-		endif
-		let l:alternatives = s:SplitIntoAlternatives(l:pattern)
-		if len(l:alternatives) > 1
-			for l:alternative in l:alternatives
-				if index(l:expandedPatterns, l:alternative) == -1
-					call add(l:expandedPatterns, l:alternative)
-				endif
-			endfor
-		endif
-	endfor
+    " Complete both the entire pattern as well as its individual alternatives.
+    let l:expandedPatterns = []
+    for l:pattern in l:patterns
+        if index(l:expandedPatterns, l:pattern) == -1
+            call add(l:expandedPatterns, l:pattern)
+        endif
+        let l:alternatives = s:SplitIntoAlternatives(l:pattern)
+        if len(l:alternatives) > 1
+            for l:alternative in l:alternatives
+                if index(l:expandedPatterns, l:alternative) == -1
+                    call add(l:expandedPatterns, l:alternative)
+                endif
+            endfor
+        endif
+    endfor
 
-	" Filter according to the argument lead. Allow to omit the frequent initial
-	" \< atom in the lead.
-	return filter(l:expandedPatterns, "v:val =~ '^\\%(\\\\<\\)\\?\\V' . " . string(escape(a:ArgLead, '\')))
+    " Filter according to the argument lead. Allow to omit the frequent initial
+    " \< atom in the lead.
+    return filter(l:expandedPatterns, "v:val =~ '^\\%(\\\\<\\)\\?\\V' . " . string(escape(a:ArgLead, '\')))
 endfunction
 
 
@@ -1187,65 +1188,65 @@ endfunction
 
 " Access the number of possible marks.
 function! mark#GetNum()
-	return s:markNum
+    return s:markNum
 endfunction
 
 " Access the current / passed index pattern.
 function! mark#GetPattern( ... )
-	if a:0
-		return s:pattern[a:1]
-	else
-		return (s:lastSearch == -1 ? '' : s:pattern[s:lastSearch])
-	endif
+    if a:0
+        return s:pattern[a:1]
+    else
+        return (s:lastSearch == -1 ? '' : s:pattern[s:lastSearch])
+    endif
 endfunction
 
 
 "- initializations ------------------------------------------------------------
 
 augroup Mark
-	autocmd!
-	autocmd WinEnter * if ! exists('w:mwMatch') | call mark#UpdateMark() | endif
-	autocmd TabEnter * call mark#UpdateScope()
+    autocmd!
+    autocmd WinEnter * if ! exists('w:mwMatch') | call mark#UpdateMark() | endif
+    autocmd TabEnter * call mark#UpdateScope()
 augroup END
 
 " Define global variables and initialize current scope.
 function! mark#Init()
-	let s:markNum = 0
-	while hlexists('MarkWord' . (s:markNum + 1))
-		let s:markNum += 1
-	endwhile
-	let s:pattern = repeat([''], s:markNum)
-	let s:cycle = 0
-	let s:lastSearch = -1
-	let s:enabled = 1
+    let s:markNum = 0
+    while hlexists('MarkWord' . (s:markNum + 1))
+        let s:markNum += 1
+    endwhile
+    let s:pattern = repeat([''], s:markNum)
+    let s:cycle = 0
+    let s:lastSearch = -1
+    let s:enabled = 1
 endfunction
 function! mark#ReInit( newMarkNum )
-	if a:newMarkNum < s:markNum " There are less marks than before.
-		" Clear the additional highlight groups.
-		for i in range(a:newMarkNum + 1, s:markNum)
-			execute 'highlight clear MarkWord' . (i + 1)
-		endfor
+    if a:newMarkNum < s:markNum " There are less marks than before.
+        " Clear the additional highlight groups.
+        for i in range(a:newMarkNum + 1, s:markNum)
+            execute 'highlight clear MarkWord' . (i + 1)
+        endfor
 
-		" Truncate the mark patterns.
-		let s:pattern = s:pattern[0 : (a:newMarkNum - 1)]
+        " Truncate the mark patterns.
+        let s:pattern = s:pattern[0 : (a:newMarkNum - 1)]
 
-		" Correct any indices.
-		let s:cycle = min([s:cycle, (a:newMarkNum - 1)])
-		let s:lastSearch = (s:lastSearch < a:newMarkNum ? s:lastSearch : -1)
-	elseif a:newMarkNum > s:markNum " There are more marks than before.
-		" Expand the mark patterns.
-		let s:pattern += repeat([''], (a:newMarkNum - s:markNum))
-	endif
+        " Correct any indices.
+        let s:cycle = min([s:cycle, (a:newMarkNum - 1)])
+        let s:lastSearch = (s:lastSearch < a:newMarkNum ? s:lastSearch : -1)
+    elseif a:newMarkNum > s:markNum " There are more marks than before.
+        " Expand the mark patterns.
+        let s:pattern += repeat([''], (a:newMarkNum - s:markNum))
+    endif
 
-	let s:markNum = a:newMarkNum
+    let s:markNum = a:newMarkNum
 endfunction
 
 call mark#Init()
 if exists('g:mwDoDeferredLoad') && g:mwDoDeferredLoad
-	unlet g:mwDoDeferredLoad
-	call mark#LoadCommand(0)
+    unlet g:mwDoDeferredLoad
+    call mark#LoadCommand(0)
 else
-	call mark#UpdateScope()
+    call mark#UpdateScope()
 endif
 
 " vim: ts=4 sts=0 sw=4 noet
