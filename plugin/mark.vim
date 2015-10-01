@@ -235,9 +235,9 @@
 "     -> e.g. :Mark Mark.\{-}\ze(
 
 " Avoid installing twice or when in unsupported Vim version.
-"if exists('g:loaded_mark') || (v:version == 701 && ! exists('*matchadd')) || (v:version < 701)
-    "finish
-"endif
+if exists('g:loaded_mark') || (v:version == 701 && ! exists('*matchadd')) || (v:version < 701)
+    finish
+endif
 let g:loaded_mark = 1
 let s:save_cpo = &cpo
 set cpo&vim
