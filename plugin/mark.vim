@@ -266,10 +266,10 @@ endif
 if ! exists('g:mwPalettes')
     let g:mwPalettes = {
     \   'original': [
-        \   { 'ctermbg':'Blue',       'ctermfg':'Black', 'guibg':'#de935f', 'guifg':'Black', 'gui':'bold' },
-        \   { 'ctermbg':'Cyan',       'ctermfg':'Black', 'guibg':'#cc6666', 'guifg':'Black', 'gui':'bold' },
         \   { 'ctermbg':'Green',      'ctermfg':'Black', 'guibg':'#b294bb', 'guifg':'Black', 'gui':'bold' },
+        \   { 'ctermbg':'Blue',       'ctermfg':'Black', 'guibg':'#de935f', 'guifg':'Black', 'gui':'bold' },
         \   { 'ctermbg':'Blue',       'ctermfg':'Black', 'guibg':'#8ec83a', 'guifg':'Black', 'gui':'bold' },
+        \   { 'ctermbg':'Cyan',       'ctermfg':'Black', 'guibg':'#cc6666', 'guifg':'Black', 'gui':'bold' },
         \   { 'ctermbg':'Blue',       'ctermfg':'Black', 'guibg':'#8abeb7', 'guifg':'Black', 'gui':'bold' },
         \],
     \   'extended': function('mark#palettes#Extended'),
